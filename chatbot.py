@@ -2,23 +2,20 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import json
 import os
-import requests
 
 app = Flask(__name__)
-CORS(app)
+CORS(app)  # allow requests from frontend
 
-# Load dataset
+VERIFY_TOKEN = "my_verify_token"  # set this, use same in Meta Dev console
+
+# Load dataset (expects diseases.json in same folder)
 DATA_FILE = os.path.join(os.path.dirname(__file__), "diseases.json")
 with open(DATA_FILE, "r", encoding="utf-8") as f:
     diseases = json.load(f)
 
-# WhatsApp Cloud API config
-WHATSAPP_TOKEN = "EAAcwuh8kFaABPg2ejtbCft9N328gyhmm6eEEqMZBRIDJquPWkUJgZBAcxvOV7kPdRYmObYKw76uv3xjUvL7mzj4vdhqYpCz35hIQtTsCh6rFlSWiXcmk0RqgJG1CqfktkyPGvBULhSuPS8ZC47jh5yp4ZAQOcD9HmShPasNGQPUtdq8x3lQOHo4F2hnDX5wQUeXrjNdZAwryw71Mz9zrVAHyULjuKtujKm4FJnkWQZAVKX5wZDZD"
-PHONE_NUMBER_ID = "804581786068036"
-GRAPH_API_URL = f"https://graph.facebook.com/v20.0/{PHONE_NUMBER_ID}/messages"
 
-# ---------- Chatbot logic ----------
-def chatbot_reply(user_input):
+# ---------------- Chat Logic ----------------
+def get_chatbot_reply(user_input: str):
     user_input = user_input.lower()
     matched = []
 
@@ -34,14 +31,14 @@ def chatbot_reply(user_input):
             reply_lines.append(f"- {m['disease']}: {m['advice']}")
         reply = "\n".join(reply_lines)
     else:
-        reply = "I couldn't find a match. Try listing symptoms like 'fever', 'cough', or 'headache'."
+        reply = "I couldn't find a match. Please try listing specific symptoms like 'fever', 'cough', or 'headache'."
 
     return reply
 
-# ---------- Webhook verification (needed by Meta setup) ----------
+
+# ---------------- Webhook Verify (GET) ----------------
 @app.route("/webhook", methods=["GET"])
-def verify():
-    VERIFY_TOKEN = "my_verify_token"  # set any string and use the same in Meta setup
+def verify_webhook():
     mode = request.args.get("hub.mode")
     token = request.args.get("hub.verify_token")
     challenge = request.args.get("hub.challenge")
@@ -51,36 +48,51 @@ def verify():
     else:
         return "Verification failed", 403
 
-# ---------- Receive WhatsApp messages ----------
+
+# ---------------- Webhook Messages (POST) ----------------
 @app.route("/webhook", methods=["POST"])
-def webhook():
+def webhook_messages():
     data = request.get_json()
 
-    try:
-        entry = data["entry"][0]["changes"][0]["value"]
-        if "messages" in entry:
-            message = entry["messages"][0]
-            sender = message["from"]        # user's WhatsApp number
-            user_text = message["text"]["body"]
+    if data and "entry" in data:
+        for entry in data["entry"]:
+            for change in entry.get("changes", []):
+                value = change.get("value", {})
+                messages = value.get("messages", [])
 
-            # Get chatbot reply
-            bot_reply = chatbot_reply(user_text)
+                for message in messages:
+                    if "text" in message:
+                        user_text = message["text"]["body"]
+                        sender_id = message["from"]  # user's WhatsApp number
 
-            # Send back via WhatsApp API
-            payload = {
-                "messaging_product": "whatsapp",
-                "to": sender,
-                "type": "text",
-                "text": {"body": bot_reply}
-            }
-            headers = {"Authorization": f"Bearer {WHATSAPP_TOKEN}",
-                       "Content-Type": "application/json"}
-            requests.post(GRAPH_API_URL, headers=headers, json=payload)
+                        # get chatbot reply
+                        reply_text = get_chatbot_reply(user_text)
 
-    except Exception as e:
-        print("Error handling message:", e)
+                        # send reply back via WhatsApp API
+                        send_whatsapp_message(sender_id, reply_text)
 
     return "EVENT_RECEIVED", 200
 
+
+# ---------------- Send WhatsApp Message ----------------
+import requests
+
+WHATSAPP_TOKEN = "YOUR_WHATSAPP_CLOUD_API_TOKEN"
+PHONE_NUMBER_ID = "YOUR_PHONE_NUMBER_ID"
+
+def send_whatsapp_message(to, text):
+    url = f"https://graph.facebook.com/v20.0/{PHONE_NUMBER_ID}/messages"
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": to,
+        "text": {"body": text}
+    }
+    requests.post(url, headers=headers, json=payload)
+
+
 if __name__ == "__main__":
-    app.run(port=5000, debug=True)
+    app.run(debug=True, port=5000)
