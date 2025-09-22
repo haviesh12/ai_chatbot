@@ -77,8 +77,8 @@ def webhook_messages():
 # ---------------- Send WhatsApp Message ----------------
 import requests
 
-WHATSAPP_TOKEN = "YOUR_WHATSAPP_CLOUD_API_TOKEN"
-PHONE_NUMBER_ID = "YOUR_PHONE_NUMBER_ID"
+WHATSAPP_TOKEN = "790053433753785" #business_id
+PHONE_NUMBER_ID = "804581786068036"
 
 def send_whatsapp_message(to, text):
     url = f"https://graph.facebook.com/v20.0/{PHONE_NUMBER_ID}/messages"
@@ -96,3 +96,4 @@ def send_whatsapp_message(to, text):
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
+
