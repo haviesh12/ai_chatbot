@@ -1,0 +1,232 @@
+[
+  {
+    "disease": "Common Cold",
+    "symptoms": ["cough", "sneezing", "runny nose", "sore throat", "stuffy nose", "mild headache", "tiredness", "slight fever", "watery eyes", "body aches"],
+    "advice": "Get plenty of rest, drink warm fluids like tea or soup, use over-the-counter cold medicines if needed, and wash hands frequently."
+  },
+  {
+    "disease": "Malaria",
+    "symptoms": ["fever", "chills", "sweating", "headache", "nausea", "vomiting", "muscle pain", "diarrhea"],
+    "advice": "See a doctor immediately. Malaria needs proper medical treatment with prescription medicines."
+  },
+  {
+    "disease": "Depression",
+    "symptoms": ["persistent sadness", "loss of interest in activities", "extreme tiredness", "trouble sleeping", "changes in appetite", "difficulty concentrating", "feelings of hopelessness"],
+    "advice": "Talk to a mental health counselor or doctor. Stay connected with friends and family for support."
+  },
+  {
+    "disease": "Fungal Skin Infection",
+    "symptoms": ["itching", "skin rash", "bumps on skin", "discolored patches", "scaling skin"],
+    "advice": "See a doctor for proper diagnosis. Keep the affected area clean and dry, wear loose clothing, and use prescribed antifungal creams."
+  },
+  {
+    "disease": "Allergy",
+    "symptoms": ["skin rash", "bumps on skin", "watery eyes", "constant sneezing", "shivering", "chills", "hives", "swelling"],
+    "advice": "Avoid things that trigger your allergies. Use allergy medicines as prescribed by your doctor. Get medical help if symptoms get worse."
+  },
+  {
+    "disease": "GERD (Acid Reflux)",
+    "symptoms": ["chest pain", "cough", "stomach pain", "heartburn", "sores on tongue", "vomiting", "bitter taste in mouth"],
+    "advice": "Eat smaller meals more often, avoid spicy and fatty foods, don't lie down right after eating. See a doctor for acid-reducing medicines."
+  },
+  {
+    "disease": "Liver Disease (Cholestasis)",
+    "symptoms": ["stomach pain", "yellow eyes", "nausea", "loss of appetite", "yellow skin", "vomiting", "itching", "dark urine"],
+    "advice": "Get medical care right away to check liver function. Follow prescribed diet and medicines. Don't drink alcohol."
+  },
+  {
+    "disease": "Drug Reaction",
+    "symptoms": ["burning when urinating", "blood spots in urine", "stomach pain", "itching", "skin rash", "swelling"],
+    "advice": "Stop taking the medicine that caused the reaction and see a doctor immediately. Don't take medicines on your own."
+  },
+  {
+    "disease": "Stomach Ulcers",
+    "symptoms": ["passing gas frequently", "internal itching feeling", "loss of appetite", "stomach pain", "nausea", "bloating"],
+    "advice": "Avoid spicy foods and alcohol. Eat small, frequent meals. See a doctor for proper diagnosis and stomach acid medicines."
+  },
+  {
+    "disease": "HIV/AIDS",
+    "symptoms": ["muscle wasting", "white patches in throat", "high fever", "weight loss", "frequent infections", "swollen lymph nodes"],
+    "advice": "Get immediate medical care from an HIV specialist. Take prescribed HIV medicines exactly as directed and practice safe behaviors."
+  },
+  {
+    "disease": "Diabetes",
+    "symptoms": ["extreme hunger", "tiredness", "weight changes", "anxiety", "cold hands and feet", "mood swings", "frequent urination", "blurred vision", "slow healing wounds"],
+    "advice": "See a doctor for blood sugar management. Eat healthy foods, exercise regularly, and take diabetes medicines or insulin as prescribed."
+  },
+  {
+    "disease": "Acne",
+    "symptoms": ["skin rash", "pus-filled pimples", "blackheads", "scarring", "oily skin"],
+    "advice": "Keep skin clean, don't squeeze pimples, use oil-free products, and see a skin doctor if acne is severe."
+  },
+  {
+    "disease": "Liver Disease from Alcohol",
+    "symptoms": ["vomiting", "yellow skin", "stomach pain", "swollen belly", "bloated abdomen", "history of drinking alcohol", "fluid buildup"],
+    "advice": "Stop drinking alcohol completely and get urgent medical help. Follow a healthy diet and doctor's treatment plan."
+  },
+  {
+    "disease": "Arthritis",
+    "symptoms": ["muscle weakness", "stiff neck", "swollen joints", "stiffness when moving", "painful walking", "joint pain"],
+    "advice": "Maintain healthy weight, do gentle exercises to keep joints flexible, and follow medical treatment for pain and swelling."
+  },
+  {
+    "disease": "Asthma",
+    "symptoms": ["tiredness", "cough", "high fever", "shortness of breath", "family history of asthma", "thick mucus", "wheezing"],
+    "advice": "Identify and avoid asthma triggers, use inhalers as prescribed, and get prompt care if breathing becomes difficult."
+  },
+  {
+    "disease": "Neck Problems (Cervical Spondylosis)",
+    "symptoms": ["back pain", "weakness in arms or legs", "neck pain", "dizziness", "loss of balance", "numbness in hands"],
+    "advice": "Maintain good posture, do physical therapy exercises, use supportive pillows, and see a doctor for ongoing pain or numbness."
+  },
+  {
+    "disease": "Chickenpox",
+    "symptoms": ["itching", "skin rash", "tiredness", "sluggishness", "high fever", "headache", "loss of appetite", "mild fever", "swollen lymph nodes", "feeling unwell", "red spots all over body"],
+    "advice": "Keep the person isolated to prevent spreading, keep fingernails short to prevent scratching, apply soothing lotions, and see a doctor for fever control."
+  },
+  {
+    "disease": "Dengue Fever",
+    "symptoms": ["skin rash", "chills", "joint pain", "vomiting", "tiredness", "high fever", "headache", "nausea", "loss of appetite", "pain behind eyes", "back pain", "feeling unwell", "muscle pain", "red spots on body"],
+    "advice": "Get medical attention immediately, drink plenty of fluids to prevent dehydration, and avoid pain relievers like aspirin unless prescribed."
+  },
+  {
+    "disease": "Hemorrhoids (Piles)",
+    "symptoms": ["constipation", "pain during bowel movements", "pain around anus", "blood in stool", "anal itching", "swelling around anus"],
+    "advice": "Eat high-fiber foods, drink plenty of water, avoid straining during bowel movements, and see a doctor for proper evaluation."
+  },
+  {
+    "disease": "Stomach Flu (Gastroenteritis)",
+    "symptoms": ["vomiting", "sunken eyes", "dehydration", "diarrhea", "stomach cramps", "nausea"],
+    "advice": "Drink plenty of rehydration solutions to prevent dehydration, eat light foods, and see a doctor if symptoms are severe or last long."
+  },
+  {
+    "disease": "Heart Attack",
+    "symptoms": ["vomiting", "shortness of breath", "sweating", "chest pain", "pain in arm or jaw", "nausea"],
+    "advice": "Call emergency services immediately. Chew an aspirin if recommended and stay calm while waiting for medical help."
+  },
+  {
+    "disease": "Hepatitis A",
+    "symptoms": ["joint pain", "vomiting", "yellow skin", "dark urine", "nausea", "loss of appetite", "stomach pain", "diarrhea", "mild fever", "yellow eyes", "muscle pain"],
+    "advice": "Get plenty of rest, drink lots of fluids, eat low-fat foods, and avoid alcohol. Wash hands frequently to prevent spreading."
+  },
+  {
+    "disease": "Hepatitis B",
+    "symptoms": ["itching", "tiredness", "sluggishness", "yellow skin", "dark urine", "loss of appetite", "stomach pain", "yellow urine", "yellow eyes", "feeling unwell", "history of blood transfusion", "history of unsterile injections"],
+    "advice": "See a doctor for antiviral treatment, avoid alcohol, eat healthy foods, and get vaccinated if at risk."
+  },
+  {
+    "disease": "Hepatitis C",
+    "symptoms": ["tiredness", "yellow skin", "nausea", "loss of appetite", "yellow eyes", "family history of hepatitis"],
+    "advice": "Get medical evaluation for antiviral treatment, avoid alcohol, and have regular liver function tests."
+  },
+  {
+    "disease": "Hepatitis D",
+    "symptoms": ["joint pain", "vomiting", "tiredness", "yellow skin", "dark urine", "nausea", "loss of appetite", "stomach pain", "yellow eyes"],
+    "advice": "Get medical care immediately for proper treatment, avoid alcohol, and get Hepatitis B vaccine to prevent co-infection."
+  },
+  {
+    "disease": "Hepatitis E",
+    "symptoms": ["joint pain", "vomiting", "tiredness", "high fever", "yellow skin", "dark urine", "nausea", "loss of appetite", "stomach pain", "yellow eyes", "liver failure", "unconsciousness", "stomach bleeding"],
+    "advice": "Get immediate medical attention, especially if pregnant or showing signs of liver failure. Practice good hygiene and drink clean water."
+  },
+  {
+    "disease": "High Blood Pressure",
+    "symptoms": ["headache", "chest pain", "dizziness", "loss of balance", "difficulty concentrating", "blurred vision"],
+    "advice": "Check your blood pressure regularly, reduce salt intake, maintain healthy weight, exercise regularly, and take medicines as prescribed."
+  },
+  {
+    "disease": "Overactive Thyroid",
+    "symptoms": ["tiredness", "mood swings", "weight loss", "restlessness", "sweating", "diarrhea", "fast heart rate", "extreme hunger", "muscle weakness", "irritability", "irregular periods"],
+    "advice": "See a hormone specialist for proper treatment, avoid too much iodine, and have regular thyroid hormone tests."
+  },
+  {
+    "disease": "Low Blood Sugar",
+    "symptoms": ["vomiting", "tiredness", "anxiety", "sweating", "headache", "nausea", "blurred vision", "extreme hunger", "dry and tingling lips", "slurred speech", "irritability", "heart palpitations"],
+    "advice": "Eat fast-acting sugary foods like glucose tablets or fruit juice immediately, identify the cause, and follow up with a doctor for prevention."
+  },
+  {
+    "disease": "Underactive Thyroid",
+    "symptoms": ["tiredness", "weight gain", "cold hands and feet", "mood swings", "sluggishness", "dizziness", "puffy face and eyes", "enlarged thyroid", "brittle nails", "swollen hands and feet", "depression", "irritability", "irregular periods"],
+    "advice": "Take thyroid hormone replacement exactly as prescribed, have regular thyroid function tests, and maintain balanced diet and exercise."
+  },
+  {
+    "disease": "Skin Infection (Impetigo)",
+    "symptoms": ["skin rash", "high fever", "blisters", "red sores around nose", "yellow crusty discharge"],
+    "advice": "Keep affected area clean, avoid scratching, wash hands frequently, and see a doctor for antibiotic creams or medicines."
+  },
+  {
+    "disease": "Jaundice",
+    "symptoms": ["itching", "vomiting", "tiredness", "weight loss", "high fever", "yellow skin", "dark urine", "stomach pain", "yellow eyes"],
+    "advice": "Get medical evaluation to find the underlying cause, rest and stay hydrated, avoid alcohol, and follow treatment plan recommended by your doctor."
+  },
+  {
+    "disease": "Migraine Headaches",
+    "symptoms": ["heartburn", "indigestion", "severe headache", "blurred vision", "extreme hunger", "stiff neck", "depression", "irritability", "seeing flashing lights", "sensitivity to light and sound"],
+    "advice": "Rest in a quiet, dark room, avoid known triggers like certain foods or stress, stay hydrated, and see a doctor for headache medicines."
+  },
+  {
+    "disease": "Joint Wear and Tear (Osteoarthritis)",
+    "symptoms": ["joint pain", "neck pain", "knee pain", "hip pain", "swollen joints", "painful walking", "stiffness in morning"],
+    "advice": "Maintain healthy weight, do gentle exercises to strengthen joints, apply warm or cold compresses, and see a doctor for pain management."
+  },
+  {
+    "disease": "Stroke (Brain Hemorrhage)",
+    "symptoms": ["vomiting", "severe headache", "weakness on one side of body", "altered consciousness", "difficulty speaking", "facial drooping"],
+    "advice": "Call emergency services immediately. This is a medical emergency requiring immediate hospitalization and brain specialist care."
+  },
+  {
+    "disease": "Lung Infection (Pneumonia)",
+    "symptoms": ["chills", "tiredness", "cough", "high fever", "shortness of breath", "sweating", "feeling unwell", "thick mucus", "chest pain", "fast heart rate", "rust-colored sputum"],
+    "advice": "Get medical care promptly, take prescribed antibiotics if needed, get plenty of rest, drink fluids, and watch breathing difficulty closely."
+  },
+  {
+    "disease": "Psoriasis",
+    "symptoms": ["skin rash", "joint pain", "peeling skin", "silvery scales on skin", "small dents in nails", "inflamed nails", "dry cracked skin"],
+    "advice": "Keep skin moisturized, avoid harsh soaps and scratching, manage stress, and see a skin doctor for topical or systemic treatments."
+  },
+  {
+    "disease": "Tuberculosis (TB)",
+    "symptoms": ["chills", "vomiting", "tiredness", "weight loss", "persistent cough", "high fever", "shortness of breath", "night sweats", "loss of appetite", "mild fever", "yellow eyes", "swollen lymph nodes", "feeling unwell", "thick mucus", "chest pain", "blood in sputum"],
+    "advice": "Get medical care immediately. Take the full course of prescribed TB medicines, eat nutritious food, and isolate to prevent spreading to others."
+  },
+  {
+    "disease": "Typhoid Fever",
+    "symptoms": ["chills", "vomiting", "tiredness", "high fever", "headache", "nausea", "constipation", "stomach pain", "diarrhea", "very sick appearance", "belly pain", "rose-colored spots on chest"],
+    "advice": "See a doctor for diagnosis and antibiotics, drink plenty of clean fluids, eat soft easily digestible foods, and maintain strict hygiene."
+  },
+  {
+        "disease": "Urinary Tract Infection",
+    "symptoms": [
+      "burning micturition",
+      "bladder discomfort",
+      "foul smell of urine",
+      "continuous feel of urine"
+    ],
+    "advice": "Drink plenty of water, avoid irritant drinks like caffeine or alcohol, maintain good personal hygiene, and take prescribed antibiotics as directed."
+  },
+  {
+    "disease": "Varicose Veins",
+    "symptoms": [
+      "fatigue",
+      "cramps",
+      "bruising",
+      "obesity",
+      "swollen legs",
+      "swollen blood vessels",
+      "prominent veins on calf"
+    ],
+    "advice": "Elevate legs when resting, wear compression stockings, maintain healthy weight, avoid standing for long periods, and consult a vascular specialist if severe."
+  },
+  {
+    "disease": "Vertigo",
+    "symptoms": [
+      "vomiting",
+      "headache",
+      "nausea",
+      "spinning movements",
+      "loss of balance",
+      "unsteadiness"
+    ],
+    "advice": "Sit or lie down immediately during an episode to avoid falls, move slowly, stay hydrated, and see a doctor for evaluation of underlying causes."
+  }
+]
