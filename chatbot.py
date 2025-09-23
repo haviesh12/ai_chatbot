@@ -6,7 +6,7 @@ import os
 app = Flask(__name__)
 CORS(app)  # allow requests from frontend
 
-VERIFY_TOKEN = "my_verify_token"  # set this, use same in Meta Dev console
+VERIFY_TOKEN = "abc@123"  # set this, use same in Meta Dev console
 
 # Load dataset (expects diseases.json in same folder)
 DATA_FILE = os.path.join(os.path.dirname(__file__), "diseases.json")
@@ -77,7 +77,7 @@ def webhook_messages():
 # ---------------- Send WhatsApp Message ----------------
 import requests
 
-WHATSAPP_TOKEN = "790053433753785" #business_id
+WHATSAPP_TOKEN = "EAAcwuh8kFaABPvPez0BmXYcs00qnZC6CWDniP1N4ldxfoZAoCTmGAZCXVsOZBWs0QotaBKFxOubGHgZCzeYmccpe6ZCI6lu20SUpIqkdve6G5zeSXO1WgXrzvKEYq0nz2jc6s0HXymCsQrftNluYCwJEsDQ0lJ7WCZB24tsXy4yLh7cVDLTfsI6IBhOxRzVt3pLA8kDHQXAPL7oijW6JUFEYiwzcOZBSQUpTVkzMzlIZBYPsvqS8ZD" #business_id
 PHONE_NUMBER_ID = "804581786068036"
 
 def send_whatsapp_message(to, text):
@@ -96,4 +96,5 @@ def send_whatsapp_message(to, text):
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
+
 
