@@ -1,8 +1,12 @@
 import os
 import json
+import csv
+import random
 import requests
+import pandas as pd
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from twilio.rest import Client
 
 # =============================================================================
 # 1. INITIALIZE FLASK APP & LOAD ENVIRONMENT VARIABLES
@@ -10,124 +14,136 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
+# Load credentials from environment variables for security
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN", "12345")
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN", "EAAcwuh8kFaABPnP9gv7d8mNIrmJo58ef7xXoSzPEUvV1IVZCBBoLt5Vb8hDlu7i8VP3ZBUW1ZBJvtGUIVgZBZCX1LwaR4mQcnFRCEZCXeaBBJj8gZA4oUQMZBHbVLE9ZCq2HZA5muNSoLX97Ybh09fiA96isP89H0IWQzbINTe1z3S7LL0uIniUnjHRqI0ZBCCkG1P4NgZDZD")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID", "804581786068036")
+TWILIO_ACCOUNT_SID = os.getenv("AC421d86ec58d4ea82010bfaac1b55e5e4")
+TWILIO_AUTH_TOKEN = os.getenv("ef37983b955c269cb4513a7dd63bfc47")
+TWILIO_PHONE_NUMBER = os.getenv("+16572932965")
 
 # =============================================================================
-# 2. LOAD DATA & INITIALIZE SESSION TRACKING
+# 2. LOAD ALL NECESSARY DATA
 # =============================================================================
-DATA_FILE = os.path.join(os.path.dirname(__file__), "diseases.json")
-with open(DATA_FILE, "r", encoding="utf-8") as f:
-    diseases = json.load(f)
+# Load training data to build the primary disease->symptoms map
+training = pd.read_csv("Data/Training.csv")
+diseases_data = {}
+for col in training.columns[:-1]:  # Skip the 'prognosis' column
+    for disease in training['prognosis'].unique():
+        if disease not in diseases_data:
+            diseases_data[disease] = []
+        if training.loc[training['prognosis'] == disease, col].any():
+            diseases_data[disease].append(col) # Keep underscore for internal logic
 
-# Create a fast lookup for all unique symptoms
-all_symptoms_set = set(s for d in diseases for s in d["symptoms"])
+# Load helper data (descriptions, precautions, doctors)
+description_dict = {}
+precaution_dict = {}
+doctors_db = []
 
+with open("MasterData/symptom_Description.csv") as f:
+    for row in csv.reader(f):
+        if len(row) >= 2: description_dict[row[0].strip()] = row[1].strip()
+
+with open("MasterData/symptom_precaution.csv") as f:
+    for row in csv.reader(f):
+        if len(row) >= 5: precaution_dict[row[0].strip()] = [row[1], row[2], row[3], row[4]]
+
+with open("doctors.json", "r", encoding="utf-8") as f:
+    doctors_db = json.load(f)
+
+# Dictionary to track all user conversations
 sessions = {}
 MAX_QUESTIONS = 5
 
 # =============================================================================
-# 3. ADVANCED CHATBOT LOGIC (Final Corrected Version)
+# 3. API HELPER FUNCTIONS (SMS & DOCTOR SEARCH)
 # =============================================================================
 
-def extract_symptoms(message, all_symptoms):
-    """Accurate symptom extraction that handles single and multi-word messages."""
-    message = f" {message.lower()} " # Add spaces to handle word boundaries
-    found_symptoms = set()
-    for symptom in all_symptoms:
-        if f" {symptom.lower()} " in message:
-            found_symptoms.add(symptom)
-    return list(found_symptoms)
-
-def rank_diseases(candidate_diseases, has_symptoms, has_not_symptoms):
-    """Scores and ranks a pre-filtered list of candidate diseases."""
-    scores = {}
-    for disease in candidate_diseases:
-        score = 0
-        YES_SCORE = 2  # Give more weight to confirmed symptoms
-        NO_PENALTY = -1 # A "no" is a penalty, but less destructive than filtering
-
-        for symptom in disease["symptoms"]:
-            if symptom in has_symptoms:
-                score += YES_SCORE
-            if symptom in has_not_symptoms:
-                score += NO_PENALTY
-        scores[disease["disease"]] = score
-
-    ranked_diseases = sorted(scores.items(), key=lambda item: item[1], reverse=True)
+def find_nearby_doctors(location_text):
+    """Searches the local doctors.json file for a matching city or area."""
+    location_text = location_text.lower()
+    results = [doc for doc in doctors_db if location_text in doc["city"].lower() or location_text in doc["area"].lower()]
     
-    ranked_list = []
-    for disease_name, score in ranked_diseases:
-        for d in candidate_diseases:
-            if d['disease'] == disease_name:
-                # Attach the score to the disease object for confidence checks
-                d['score'] = score 
-                ranked_list.append(d)
-                break
-    return ranked_list
-
-def choose_next_symptom(top_diseases, known_symptoms):
-    """Chooses the most effective symptom to ask about next."""
-    symptom_counts = {}
-    # Focus on the top 3-5 contenders to find a differentiator
-    for d in top_diseases[:4]: 
-        for s in d["symptoms"]:
-            if s not in known_symptoms:
-                symptom_counts[s] = symptom_counts.get(s, 0) + 1
-    
-    if not symptom_counts:
-        return None
+    if not results:
+        return "Sorry, I couldn't find any doctors in that location in my database."
         
-    # Prefer a symptom that can differentiate (is not present in all top contenders)
-    for symptom, count in sorted(symptom_counts.items(), key=lambda item: item[1], reverse=True):
-        if count < len(top_diseases[:4]):
-             return symptom
+    reply = "Here are some doctors and clinics I found:\n\n"
+    for place in results[:3]: # Limit to top 3 results
+        reply += f"🏥 *{place['name']}*\n"
+        reply += f"📍 Area: {place['area']}, {place['city']}\n\n"
+    return reply.strip()
 
-    # Fallback if all top diseases share the same remaining symptoms
-    return max(symptom_counts, key=symptom_counts.get) if symptom_counts else None
-
-def get_final_diagnosis(ranked_diseases, session):
-    """Provides a final diagnosis ONLY if confidence is high enough."""
-    if not ranked_diseases:
-        return "Based on your answers, I am unable to make a suggestion. It is best to consult a doctor."
-
-    best_guess = ranked_diseases[0]
-    
-    # ✅ CONFIDENCE THRESHOLD: Check if the score is positive and meaningful.
-    # The score must be at least twice the number of initial symptoms to be confident.
-    if best_guess['score'] < len(session.get('initial_symptoms', [])) * 2:
-        return "Your symptoms are not specific enough for me to make a confident suggestion. Please consult a doctor for an accurate diagnosis."
-
-    return f"Based on your symptoms, the most likely condition is *{best_guess['disease']}*.\n\n*Advice:* {best_guess['advice']}\n\n*Disclaimer: This is an AI suggestion. Please consult a doctor for a professional diagnosis.*"
-
-def get_next_response(session):
-    has_symptoms = session["has_symptoms"]
-    has_not_symptoms = session["has_not_symptoms"]
-    questions_asked = session.get("questions_asked", 0)
-    
-    # Use the pre-filtered candidate list from the session
-    candidate_diseases = session.get("candidate_diseases", [])
-    
-    ranked_diseases = rank_diseases(candidate_diseases, has_symptoms, has_not_symptoms)
-
-    if questions_asked >= MAX_QUESTIONS or not ranked_diseases:
-        return {"reply": get_final_diagnosis(ranked_diseases, session), "done": True}
-
-    next_symptom = choose_next_symptom(ranked_diseases, has_symptoms + has_not_symptoms)
-    
-    if next_symptom:
-        session["questions_asked"] = questions_asked + 1
-        return {
-            "reply": f"To help clarify, do you also have '{next_symptom}'? (Please reply with 'yes' or 'no')",
-            "next_question": next_symptom,
-            "done": False
-        }
-
-    return {"reply": get_final_diagnosis(ranked_diseases, session), "done": True}
+def send_sms_alert(recipient_phone, message_body):
+    """Sends an SMS message using the Twilio API."""
+    if not all([TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER]):
+        print("Twilio credentials are not configured. Skipping SMS alert.")
+        return
+    try:
+        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        message = client.messages.create(to=f"+{recipient_phone}", from_=TWILIO_PHONE_NUMBER, body=message_body)
+        print(f"SMS alert sent successfully! SID: {message.sid}")
+    except Exception as e:
+        print(f"Error sending SMS alert: {e}")
 
 # =============================================================================
-# 4. WHATSAPP WEBHOOK SETUP
+# 4. CORE CHATBOT LOGIC (Based on the simpler filtering model)
+# =============================================================================
+
+def get_chatbot_response(session, user_input):
+    """Contains the main filtering logic for the chatbot conversation."""
+    
+    # Filter possible diseases based on user's new input
+    matching_diseases = []
+    for disease, symptoms in diseases_data.items():
+        for s in symptoms:
+            if s.replace("_", " ").lower() in user_input:
+                matching_diseases.append(disease)
+                break
+    
+    if matching_diseases:
+        # Intersect the current possibilities with the new matches
+        session["possible_diseases"] = list(
+            set(session["possible_diseases"]) & set(matching_diseases)
+        )
+
+    # Check if it's time to diagnose
+    if session["question_count"] >= MAX_QUESTIONS or len(session["possible_diseases"]) <= 1:
+        if session["possible_diseases"]:
+            diagnosis = random.choice(session["possible_diseases"])
+            desc = description_dict.get(diagnosis, "No description available.")
+            precautions = precaution_dict.get(diagnosis, [])
+            reply = f"🩺 Based on your symptoms, a possible condition is *{diagnosis}*.\n\n📖 *About:* {desc}"
+            if precautions:
+                reply += "\n\n🛡️ *Suggested Precautions:*\n"
+                for i, p in enumerate(precautions, 1):
+                    reply += f"{i}. {p}\n"
+            reply += "\n\n*Disclaimer: This is an AI suggestion. Please consult a doctor.*"
+        else:
+            reply = "❌ Sorry, I couldn't identify a specific disease based on your answers. Please consult a doctor."
+        
+        session["stage"] = "awaiting_doctor_search_consent"
+        session["diagnosis"] = diagnosis if 'diagnosis' in locals() else None
+        return {"reply": reply}
+
+    # Ask the next question
+    remaining_symptoms = []
+    for disease in session["possible_diseases"]:
+        for symptom in diseases_data[disease]:
+            if symptom not in session["asked_questions"]:
+                remaining_symptoms.append(symptom)
+
+    if not remaining_symptoms:
+        reply = "I need more information, but I'm out of questions. Please consult a doctor."
+        session["stage"] = "done"
+        return {"reply": reply}
+
+    next_question = random.choice(remaining_symptoms)
+    session["asked_questions"].append(next_question)
+    session["question_count"] += 1
+    return {"reply": f"To help clarify, do you also have '{next_question.replace('_', ' ')}'? (Please reply with 'yes' or 'no')"}
+
+# =============================================================================
+# 5. WHATSAPP WEBHOOK SETUP
 # =============================================================================
 
 @app.route("/webhook", methods=["GET"])
@@ -143,63 +159,57 @@ def verify_webhook():
 def webhook_messages():
     data = request.get_json()
     try:
-        if data["object"] == "whatsapp_business_account":
-            for entry in data["entry"]:
-                for change in entry["changes"]:
-                    if change["field"] == "messages":
+        if data.get("object") == "whatsapp_business_account":
+            for entry in data.get("entry", []):
+                for change in entry.get("changes", []):
+                    if change.get("field") == "messages":
                         message_data = change["value"]["messages"][0]
                         sender_id = message_data["from"]
                         user_text = message_data["text"]["body"].lower().strip()
                         handle_conversation(sender_id, user_text)
     except (KeyError, IndexError, TypeError):
-        pass
+        pass # Ignore non-message notifications
     return "EVENT_RECEIVED", 200
 
 def handle_conversation(sender_id, message):
     if sender_id not in sessions or message in ["hi", "hello", "start", "menu"]:
         sessions[sender_id] = {
             "stage": "symptom_gathering",
-            "initial_symptoms": [],
-            "has_symptoms": [],
-            "has_not_symptoms": [],
-            "candidate_diseases": [],
-            "last_question": None,
-            "questions_asked": 0
+            "possible_diseases": list(diseases_data.keys()),
+            "asked_questions": [],
+            "question_count": 0,
+            "diagnosis": None
         }
-        welcome_message = "Welcome to the HealthCare ChatBot! Please describe your main symptoms. For example: 'I have a high fever and a severe headache'."
-        send_whatsapp_message(sender_id, welcome_message)
+        send_whatsapp_message(sender_id, "Welcome to the HealthCare ChatBot! Please describe your main symptoms.")
         return
 
     session = sessions[sender_id]
+    stage = session.get("stage")
 
-    if session.get("last_question"):
-        last_symptom = session["last_question"]
+    if stage == "symptom_gathering":
+        result = get_chatbot_response(session, message)
+        send_whatsapp_message(sender_id, result["reply"])
+        
+        if session.get("stage") == "awaiting_doctor_search_consent":
+            send_whatsapp_message(sender_id, "Would you like me to find a nearby doctor? (yes/no)")
+            # Trigger SMS alert if a diagnosis was made
+            if session.get("diagnosis"):
+                sms_body = f"HealthBot Alert: Your session concluded with a possible diagnosis of {session['diagnosis']}. Check WhatsApp for details & consult a doctor."
+                send_sms_alert(sender_id, sms_body)
+
+    elif stage == "awaiting_doctor_search_consent":
         if message in ["yes", "y"]:
-            session["has_symptoms"].append(last_symptom)
-        elif message in ["no", "n"]:
-            session["has_not_symptoms"].append(last_symptom)
-        session["last_question"] = None
-    else: # This is the initial message with symptoms
-        new_symptoms = extract_symptoms(message, all_symptoms_set)
-        if new_symptoms:
-            session["has_symptoms"] = new_symptoms
-            session["initial_symptoms"] = list(new_symptoms) # Keep a record
-            
-            # ✅ CANDIDATE FILTERING: Only consider diseases relevant to the initial symptoms
-            session["candidate_diseases"] = [
-                d for d in diseases if any(s in d["symptoms"] for s in new_symptoms)
-            ]
+            session["stage"] = "awaiting_location"
+            send_whatsapp_message(sender_id, "Great! Please tell me your city or area (e.g., Mambakkam, Chennai).")
         else:
-            send_whatsapp_message(sender_id, "I couldn't recognize any symptoms. Please be more specific, for example: 'I have a sore throat and body ache'.")
-            return
-
-    result = get_next_response(session)
-    send_whatsapp_message(sender_id, result["reply"])
-
-    if result.get("done"):
+            send_whatsapp_message(sender_id, "Alright. Take care and consult a professional. Say 'hi' to start over.")
+            del sessions[sender_id]
+    
+    elif stage == "awaiting_location":
+        doctors_list = find_nearby_doctors(message)
+        send_whatsapp_message(sender_id, doctors_list)
+        send_whatsapp_message(sender_id, "I hope this helps! Wishing you a speedy recovery.")
         del sessions[sender_id]
-    else:
-        session["last_question"] = result.get("next_question")
 
 def send_whatsapp_message(to, text):
     url = f"https://graph.facebook.com/v20.0/{PHONE_NUMBER_ID}/messages"
@@ -210,11 +220,11 @@ def send_whatsapp_message(to, text):
         response.raise_for_status()
         print(f"Message sent to {to}, status: {response.status_code}")
     except requests.exceptions.HTTPError as err:
-        print(f"HTTP Error sending message to {to}: {err}")
-        print(f"Error Response Body: {response.text}")
+        print(f"HTTP Error sending message to {to}: {err}, Response: {response.text}")
 
 # =============================================================================
-# 5. RUN THE FLASK APP
+# 6. RUN THE FLASK APP
 # =============================================================================
 if __name__ == "__main__":
     app.run(debug=True)
+
