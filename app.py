@@ -21,6 +21,12 @@ DATA_FILE = os.path.join(os.path.dirname(__file__), "diseases.json")
 with open(DATA_FILE, "r", encoding="utf-8") as f:
     diseases = json.load(f)
 
+# Create a fast lookup for symptoms
+all_symptoms_set = set()
+for disease in diseases:
+    for symptom in disease["symptoms"]:
+        all_symptoms_set.add(symptom)
+
 sessions = {}
 MAX_QUESTIONS = 5
 
@@ -28,53 +34,49 @@ MAX_QUESTIONS = 5
 # 3. ADVANCED CHATBOT LOGIC (Fine-Tuned and Refactored)
 # =============================================================================
 
-def extract_symptoms(message, diseases_data):
+def extract_symptoms(message, all_symptoms):
+    """More efficient and accurate symptom extraction."""
     message = message.lower()
-    found_symptoms = []
-    for disease in diseases_data:
-        for symptom in disease["symptoms"]:
-            # Check for whole word match to avoid partial matches (e.g., 'ache' in 'headache')
-            if f" {symptom.lower()} " in f" {message} ":
-                if symptom not in found_symptoms:
-                    found_symptoms.append(symptom)
-    return found_symptoms
+    found_symptoms = set()
+    for symptom in all_symptoms:
+        # Using word boundaries to avoid partial matches (e.g., 'pain' in 'chest pain')
+        if f" {symptom.lower()} " in f" {message} ":
+            found_symptoms.add(symptom)
+    return list(found_symptoms)
 
 def rank_diseases(all_diseases, has_symptoms, has_not_symptoms):
     """
-    Scores and ranks diseases based on user's symptoms.
-    +1 for each matching symptom.
-    -1 for each symptom the user denies having.
+    Scores and ranks diseases with a heavy penalty for denied symptoms.
     """
     scores = {}
     for disease in all_diseases:
         score = 0
+        # ✅ FIX #1: Weighted Scoring
+        YES_SCORE = 1
+        NO_PENALTY = -5 # A "no" is strong counter-evidence
+
         for symptom in disease["symptoms"]:
             if symptom in has_symptoms:
-                score += 1
+                score += YES_SCORE
             if symptom in has_not_symptoms:
-                score -= 1
+                score += NO_PENALTY
         scores[disease["disease"]] = score
 
-    # Sort diseases by score in descending order
     ranked_diseases = sorted(scores.items(), key=lambda item: item[1], reverse=True)
     
-    # Return the full disease objects, not just names
     ranked_list = []
     for disease_name, score in ranked_diseases:
-        for d in all_diseases:
-            if d['disease'] == disease_name:
-                ranked_list.append(d)
-                break
+        if score > -len(has_not_symptoms): # Only consider diseases that have at least some match
+            for d in all_diseases:
+                if d['disease'] == disease_name:
+                    ranked_list.append(d)
+                    break
     return ranked_list
 
 def choose_next_symptom(top_diseases, known_symptoms):
-    """
-    Chooses the most effective symptom to ask about next to differentiate
-    between the top-ranked diseases.
-    """
+    """Chooses the most effective symptom to ask about next."""
     symptom_counts = {}
-    # Consider only the top 3-5 diseases to find a differentiator
-    for d in top_diseases[:3]: 
+    for d in top_diseases[:3]: # Focus on the top 3 contenders
         for s in d["symptoms"]:
             if s not in known_symptoms:
                 symptom_counts[s] = symptom_counts.get(s, 0) + 1
@@ -82,14 +84,12 @@ def choose_next_symptom(top_diseases, known_symptoms):
     if not symptom_counts:
         return None
         
-    # Find a symptom that is present in some top diseases but not all
+    # Prefer a symptom that can differentiate (not present in all top contenders)
     for symptom, count in sorted(symptom_counts.items(), key=lambda item: item[1], reverse=True):
         if count < len(top_diseases[:3]):
-             return symptom # This is a good differentiator
+             return symptom
 
-    # Fallback if all top diseases share the same remaining symptoms
     return max(symptom_counts, key=symptom_counts.get) if symptom_counts else None
-
 
 def get_final_diagnosis(ranked_diseases):
     if not ranked_diseases:
@@ -170,7 +170,7 @@ def handle_conversation(sender_id, message):
             session["has_not_symptoms"].append(last_symptom)
         session["last_question"] = None
     else:
-        new_symptoms = extract_symptoms(message, diseases)
+        new_symptoms = extract_symptoms(message, all_symptoms_set)
         if new_symptoms:
             for s in new_symptoms:
                 if s not in session["has_symptoms"]:
