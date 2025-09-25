@@ -21,39 +21,32 @@ DATA_FILE = os.path.join(os.path.dirname(__file__), "diseases.json")
 with open(DATA_FILE, "r", encoding="utf-8") as f:
     diseases = json.load(f)
 
-# Create a fast lookup for symptoms
-all_symptoms_set = set()
-for disease in diseases:
-    for symptom in disease["symptoms"]:
-        all_symptoms_set.add(symptom)
+# Create a fast lookup for all unique symptoms
+all_symptoms_set = set(s for d in diseases for s in d["symptoms"])
 
 sessions = {}
 MAX_QUESTIONS = 5
 
 # =============================================================================
-# 3. ADVANCED CHATBOT LOGIC (Fine-Tuned and Refactored)
+# 3. ADVANCED CHATBOT LOGIC (Final Corrected Version)
 # =============================================================================
 
 def extract_symptoms(message, all_symptoms):
-    """More efficient and accurate symptom extraction."""
-    message = message.lower()
+    """Accurate symptom extraction that handles single and multi-word messages."""
+    message = f" {message.lower()} " # Add spaces to handle word boundaries
     found_symptoms = set()
     for symptom in all_symptoms:
-        # Using word boundaries to avoid partial matches (e.g., 'pain' in 'chest pain')
-        if f" {symptom.lower()} " in f" {message} ":
+        if f" {symptom.lower()} " in message:
             found_symptoms.add(symptom)
     return list(found_symptoms)
 
-def rank_diseases(all_diseases, has_symptoms, has_not_symptoms):
-    """
-    Scores and ranks diseases with a heavy penalty for denied symptoms.
-    """
+def rank_diseases(candidate_diseases, has_symptoms, has_not_symptoms):
+    """Scores and ranks a pre-filtered list of candidate diseases."""
     scores = {}
-    for disease in all_diseases:
+    for disease in candidate_diseases:
         score = 0
-        # ✅ FIX #1: Weighted Scoring
-        YES_SCORE = 1
-        NO_PENALTY = -5 # A "no" is strong counter-evidence
+        YES_SCORE = 2  # Give more weight to confirmed symptoms
+        NO_PENALTY = -1 # A "no" is a penalty, but less destructive than filtering
 
         for symptom in disease["symptoms"]:
             if symptom in has_symptoms:
@@ -66,17 +59,19 @@ def rank_diseases(all_diseases, has_symptoms, has_not_symptoms):
     
     ranked_list = []
     for disease_name, score in ranked_diseases:
-        if score > -len(has_not_symptoms): # Only consider diseases that have at least some match
-            for d in all_diseases:
-                if d['disease'] == disease_name:
-                    ranked_list.append(d)
-                    break
+        for d in candidate_diseases:
+            if d['disease'] == disease_name:
+                # Attach the score to the disease object for confidence checks
+                d['score'] = score 
+                ranked_list.append(d)
+                break
     return ranked_list
 
 def choose_next_symptom(top_diseases, known_symptoms):
     """Chooses the most effective symptom to ask about next."""
     symptom_counts = {}
-    for d in top_diseases[:3]: # Focus on the top 3 contenders
+    # Focus on the top 3-5 contenders to find a differentiator
+    for d in top_diseases[:4]: 
         for s in d["symptoms"]:
             if s not in known_symptoms:
                 symptom_counts[s] = symptom_counts.get(s, 0) + 1
@@ -84,18 +79,26 @@ def choose_next_symptom(top_diseases, known_symptoms):
     if not symptom_counts:
         return None
         
-    # Prefer a symptom that can differentiate (not present in all top contenders)
+    # Prefer a symptom that can differentiate (is not present in all top contenders)
     for symptom, count in sorted(symptom_counts.items(), key=lambda item: item[1], reverse=True):
-        if count < len(top_diseases[:3]):
+        if count < len(top_diseases[:4]):
              return symptom
 
+    # Fallback if all top diseases share the same remaining symptoms
     return max(symptom_counts, key=symptom_counts.get) if symptom_counts else None
 
-def get_final_diagnosis(ranked_diseases):
+def get_final_diagnosis(ranked_diseases, session):
+    """Provides a final diagnosis ONLY if confidence is high enough."""
     if not ranked_diseases:
-         return "I couldn't find a matching disease. It's best to consult a doctor."
-    
+        return "Based on your answers, I am unable to make a suggestion. It is best to consult a doctor."
+
     best_guess = ranked_diseases[0]
+    
+    # ✅ CONFIDENCE THRESHOLD: Check if the score is positive and meaningful.
+    # The score must be at least twice the number of initial symptoms to be confident.
+    if best_guess['score'] < len(session.get('initial_symptoms', [])) * 2:
+        return "Your symptoms are not specific enough for me to make a confident suggestion. Please consult a doctor for an accurate diagnosis."
+
     return f"Based on your symptoms, the most likely condition is *{best_guess['disease']}*.\n\n*Advice:* {best_guess['advice']}\n\n*Disclaimer: This is an AI suggestion. Please consult a doctor for a professional diagnosis.*"
 
 def get_next_response(session):
@@ -103,10 +106,13 @@ def get_next_response(session):
     has_not_symptoms = session["has_not_symptoms"]
     questions_asked = session.get("questions_asked", 0)
     
-    ranked_diseases = rank_diseases(diseases, has_symptoms, has_not_symptoms)
+    # Use the pre-filtered candidate list from the session
+    candidate_diseases = session.get("candidate_diseases", [])
+    
+    ranked_diseases = rank_diseases(candidate_diseases, has_symptoms, has_not_symptoms)
 
     if questions_asked >= MAX_QUESTIONS or not ranked_diseases:
-        return {"reply": get_final_diagnosis(ranked_diseases), "done": True}
+        return {"reply": get_final_diagnosis(ranked_diseases, session), "done": True}
 
     next_symptom = choose_next_symptom(ranked_diseases, has_symptoms + has_not_symptoms)
     
@@ -118,7 +124,7 @@ def get_next_response(session):
             "done": False
         }
 
-    return {"reply": get_final_diagnosis(ranked_diseases), "done": True}
+    return {"reply": get_final_diagnosis(ranked_diseases, session), "done": True}
 
 # =============================================================================
 # 4. WHATSAPP WEBHOOK SETUP
@@ -152,12 +158,16 @@ def webhook_messages():
 def handle_conversation(sender_id, message):
     if sender_id not in sessions or message in ["hi", "hello", "start", "menu"]:
         sessions[sender_id] = {
+            "stage": "symptom_gathering",
+            "initial_symptoms": [],
             "has_symptoms": [],
             "has_not_symptoms": [],
+            "candidate_diseases": [],
             "last_question": None,
             "questions_asked": 0
         }
-        send_whatsapp_message(sender_id, "Welcome to the HealthCare ChatBot! Please describe your symptoms (e.g., 'I have a fever and a headache').")
+        welcome_message = "Welcome to the HealthCare ChatBot! Please describe your main symptoms. For example: 'I have a high fever and a severe headache'."
+        send_whatsapp_message(sender_id, welcome_message)
         return
 
     session = sessions[sender_id]
@@ -169,14 +179,18 @@ def handle_conversation(sender_id, message):
         elif message in ["no", "n"]:
             session["has_not_symptoms"].append(last_symptom)
         session["last_question"] = None
-    else:
+    else: # This is the initial message with symptoms
         new_symptoms = extract_symptoms(message, all_symptoms_set)
         if new_symptoms:
-            for s in new_symptoms:
-                if s not in session["has_symptoms"]:
-                    session["has_symptoms"].append(s)
+            session["has_symptoms"] = new_symptoms
+            session["initial_symptoms"] = list(new_symptoms) # Keep a record
+            
+            # ✅ CANDIDATE FILTERING: Only consider diseases relevant to the initial symptoms
+            session["candidate_diseases"] = [
+                d for d in diseases if any(s in d["symptoms"] for s in new_symptoms)
+            ]
         else:
-            send_whatsapp_message(sender_id, "I couldn't recognize any symptoms. Could you please try rephrasing? For example: 'I have a sore throat'.")
+            send_whatsapp_message(sender_id, "I couldn't recognize any symptoms. Please be more specific, for example: 'I have a sore throat and body ache'.")
             return
 
     result = get_next_response(session)
