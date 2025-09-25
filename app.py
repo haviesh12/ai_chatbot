@@ -10,7 +10,6 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-# Load your tokens from environment variables for security and best practice
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN", "12345")
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN", "EAAcwuh8kFaABPnP9gv7d8mNIrmJo58ef7xXoSzPEUvV1IVZCBBoLt5Vb8hDlu7i8VP3ZBUW1ZBJvtGUIVgZBZCX1LwaR4mQcnFRCEZCXeaBBJj8gZA4oUQMZBHbVLE9ZCq2HZA5muNSoLX97Ybh09fiA96isP89H0IWQzbINTe1z3S7LL0uIniUnjHRqI0ZBCCkG1P4NgZDZD")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID", "804581786068036")
@@ -18,17 +17,15 @@ PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID", "804581786068036")
 # =============================================================================
 # 2. LOAD DATA & INITIALIZE SESSION TRACKING
 # =============================================================================
-# Load dataset from diseases.json
 DATA_FILE = os.path.join(os.path.dirname(__file__), "diseases.json")
 with open(DATA_FILE, "r", encoding="utf-8") as f:
     diseases = json.load(f)
 
-# Dictionary to track user conversation sessions
 sessions = {}
-MAX_QUESTIONS = 5  # Limit of questions per user session
+MAX_QUESTIONS = 5
 
 # =============================================================================
-# 3. ADVANCED CHATBOT LOGIC
+# 3. ADVANCED CHATBOT LOGIC (with fixes)
 # =============================================================================
 
 def extract_symptoms(message, diseases_data):
@@ -48,40 +45,45 @@ def choose_next_symptom(possible_diseases, known_symptoms):
                 symptom_counts[s] = symptom_counts.get(s, 0) + 1
     if not symptom_counts:
         return None
-    next_symptom = max(symptom_counts, key=symptom_counts.get)
-    return next_symptom
+    return max(symptom_counts, key=symptom_counts.get)
 
 def get_best_guess(possible_diseases, known_symptoms):
+    if not possible_diseases:
+         return "I couldn't find a matching disease based on the symptoms provided. It's best to consult a doctor."
+
     ranked = sorted(
         possible_diseases,
         key=lambda d: sum(1 for s in d["symptoms"] if s in known_symptoms),
         reverse=True
     )
-    if ranked:
-        d = ranked[0]
-        # Using WhatsApp's markdown for bold text
-        return f"Based on your symptoms, the most likely condition is *{d['disease']}*.\n\n*Advice:* {d['advice']}\n\n*Disclaimer: This is an AI suggestion. Please consult a doctor for a professional diagnosis.*"
-    return "I couldn't find a matching disease based on the symptoms provided. It's best to consult a doctor."
+    
+    d = ranked[0]
+    return f"Based on your symptoms, the most likely condition is *{d['disease']}*.\n\n*Advice:* {d['advice']}\n\n*Disclaimer: This is an AI suggestion. Please consult a doctor for a professional diagnosis.*"
 
 def get_next_response(session):
     known_symptoms = session["symptoms"]
     possible_diseases = session.get("possible_diseases", diseases)
     questions_asked = session.get("questions_asked", 0)
 
-    # Filter diseases based on known symptoms
-    possible_diseases = [d for d in possible_diseases if all(s in d["symptoms"] for s in known_symptoms)]
+    # FIX #3: Removed the overly strict filtering line that used all().
+    # The ranking in get_best_guess is more robust.
+    
     session["possible_diseases"] = possible_diseases
 
     if questions_asked >= MAX_QUESTIONS or not possible_diseases:
         reply = get_best_guess(possible_diseases, known_symptoms)
         return {"reply": reply, "done": True}
 
+    # FIX #2: Modified this check to be less aggressive
     if len(possible_diseases) == 1:
-        d = possible_diseases[0]
-        reply = f"Based on your symptoms, it looks like *{d['disease']}*.\n\n*Advice:* {d['advice']}\n\n*Disclaimer: This is an AI suggestion. Please consult a doctor.*"
-        return {"reply": reply, "done": True}
+        next_symptom_check = choose_next_symptom(possible_diseases, known_symptoms)
+        # Only give a final diagnosis if no more questions can be asked
+        if next_symptom_check is None:
+            d = possible_diseases[0]
+            reply = f"Based on your symptoms, it looks like *{d['disease']}*.\n\n*Advice:* {d['advice']}\n\n*Disclaimer: This is an AI suggestion. Please consult a doctor.*"
+            return {"reply": reply, "done": True}
 
-    next_symptom = choose_next_symptom(possible_diseases, known_symptoms)
+    next_symptom = choose_next_sympton(possible_diseases, known_symptoms)
     if next_symptom:
         session["questions_asked"] = questions_asked + 1
         return {
@@ -117,17 +119,12 @@ def webhook_messages():
                         message_data = change["value"]["messages"][0]
                         sender_id = message_data["from"]
                         user_text = message_data["text"]["body"].lower().strip()
-
-                        # --- Main Conversation Handling ---
                         handle_conversation(sender_id, user_text)
-
     except (KeyError, IndexError, TypeError):
-        # Handle cases where the incoming payload is not a user message
         pass
     return "EVENT_RECEIVED", 200
 
 def handle_conversation(sender_id, message):
-    # Start a new session if one doesn't exist or if user wants to restart
     if sender_id not in sessions or message in ["hi", "hello", "start", "menu"]:
         sessions[sender_id] = {
             "symptoms": [],
@@ -140,51 +137,36 @@ def handle_conversation(sender_id, message):
 
     session = sessions[sender_id]
 
-    # Handle yes/no answer to a previous question
     if session.get("last_question"):
         last_symptom = session["last_question"]
         if message in ["yes", "y"]:
             session["symptoms"].append(last_symptom)
+        # FIX #1: The "no" case is now handled correctly by doing nothing.
         elif message in ["no", "n"]:
-            # Filter out diseases that require this symptom
-            session["possible_diseases"] = [
-                d for d in session["possible_diseases"] if last_symptom not in d["symptoms"]
-            ]
+            pass # We just move on to the next question
         session["last_question"] = None
     else:
-        # Handle initial symptom description
         new_symptoms = extract_symptoms(message, diseases)
         if new_symptoms:
             for s in new_symptoms:
                 if s not in session["symptoms"]:
                     session["symptoms"].append(s)
         else:
-            # If no symptoms are found, ask user to rephrase
-            send_whatsapp_message(sender_id, "I couldn't recognize any symptoms in your message. Could you please try rephrasing? For example: 'I have a sore throat'.")
+            send_whatsapp_message(sender_id, "I couldn't recognize any symptoms. Could you please try rephrasing? For example: 'I have a sore throat'.")
             return
 
-    # Get the next response from the bot
     result = get_next_response(session)
     send_whatsapp_message(sender_id, result["reply"])
 
     if result.get("done"):
-        # End of conversation, remove session
         del sessions[sender_id]
     else:
-        # Update session with the next question
         session["last_question"] = result.get("next_question")
 
 def send_whatsapp_message(to, text):
     url = f"https://graph.facebook.com/v20.0/{PHONE_NUMBER_ID}/messages"
-    headers = {
-        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "messaging_product": "whatsapp",
-        "to": to,
-        "text": {"body": text}
-    }
+    headers = {"Authorization": f"Bearer {WHATSAPP_TOKEN}", "Content-Type": "application/json"}
+    payload = {"messaging_product": "whatsapp", "to": to, "text": {"body": text}}
     try:
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
@@ -198,5 +180,3 @@ def send_whatsapp_message(to, text):
 # =============================================================================
 if __name__ == "__main__":
     app.run(debug=True)
-
-
