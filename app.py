@@ -25,7 +25,7 @@ sessions = {}
 MAX_QUESTIONS = 5
 
 # =============================================================================
-# 3. ADVANCED CHATBOT LOGIC (Fully Debugged)
+# 3. ADVANCED CHATBOT LOGIC (Fine-Tuned and Refactored)
 # =============================================================================
 
 def extract_symptoms(message, diseases_data):
@@ -33,50 +33,83 @@ def extract_symptoms(message, diseases_data):
     found_symptoms = []
     for disease in diseases_data:
         for symptom in disease["symptoms"]:
-            if symptom.lower() in message and symptom not in found_symptoms:
-                found_symptoms.append(symptom)
+            # Check for whole word match to avoid partial matches (e.g., 'ache' in 'headache')
+            if f" {symptom.lower()} " in f" {message} ":
+                if symptom not in found_symptoms:
+                    found_symptoms.append(symptom)
     return found_symptoms
 
-def choose_next_symptom(possible_diseases, known_symptoms):
+def rank_diseases(all_diseases, has_symptoms, has_not_symptoms):
+    """
+    Scores and ranks diseases based on user's symptoms.
+    +1 for each matching symptom.
+    -1 for each symptom the user denies having.
+    """
+    scores = {}
+    for disease in all_diseases:
+        score = 0
+        for symptom in disease["symptoms"]:
+            if symptom in has_symptoms:
+                score += 1
+            if symptom in has_not_symptoms:
+                score -= 1
+        scores[disease["disease"]] = score
+
+    # Sort diseases by score in descending order
+    ranked_diseases = sorted(scores.items(), key=lambda item: item[1], reverse=True)
+    
+    # Return the full disease objects, not just names
+    ranked_list = []
+    for disease_name, score in ranked_diseases:
+        for d in all_diseases:
+            if d['disease'] == disease_name:
+                ranked_list.append(d)
+                break
+    return ranked_list
+
+def choose_next_symptom(top_diseases, known_symptoms):
+    """
+    Chooses the most effective symptom to ask about next to differentiate
+    between the top-ranked diseases.
+    """
     symptom_counts = {}
-    for d in possible_diseases:
+    # Consider only the top 3-5 diseases to find a differentiator
+    for d in top_diseases[:3]: 
         for s in d["symptoms"]:
             if s not in known_symptoms:
                 symptom_counts[s] = symptom_counts.get(s, 0) + 1
+    
     if not symptom_counts:
         return None
-    return max(symptom_counts, key=symptom_counts.get)
+        
+    # Find a symptom that is present in some top diseases but not all
+    for symptom, count in sorted(symptom_counts.items(), key=lambda item: item[1], reverse=True):
+        if count < len(top_diseases[:3]):
+             return symptom # This is a good differentiator
 
-def get_best_guess(possible_diseases, known_symptoms):
-    if not possible_diseases:
-         return "I couldn't find a matching disease based on the symptoms provided. It's best to consult a doctor."
+    # Fallback if all top diseases share the same remaining symptoms
+    return max(symptom_counts, key=symptom_counts.get) if symptom_counts else None
 
-    ranked = sorted(
-        possible_diseases,
-        key=lambda d: sum(1 for s in d["symptoms"] if s in known_symptoms),
-        reverse=True
-    )
+
+def get_final_diagnosis(ranked_diseases):
+    if not ranked_diseases:
+         return "I couldn't find a matching disease. It's best to consult a doctor."
     
-    d = ranked[0]
-    return f"Based on your symptoms, the most likely condition is *{d['disease']}*.\n\n*Advice:* {d['advice']}\n\n*Disclaimer: This is an AI suggestion. Please consult a doctor for a professional diagnosis.*"
+    best_guess = ranked_diseases[0]
+    return f"Based on your symptoms, the most likely condition is *{best_guess['disease']}*.\n\n*Advice:* {best_guess['advice']}\n\n*Disclaimer: This is an AI suggestion. Please consult a doctor for a professional diagnosis.*"
 
 def get_next_response(session):
-    known_symptoms = session["symptoms"]
-    possible_diseases = session.get("possible_diseases", diseases)
+    has_symptoms = session["has_symptoms"]
+    has_not_symptoms = session["has_not_symptoms"]
     questions_asked = session.get("questions_asked", 0)
     
-    if questions_asked >= MAX_QUESTIONS or not possible_diseases:
-        reply = get_best_guess(possible_diseases, known_symptoms)
-        return {"reply": reply, "done": True}
+    ranked_diseases = rank_diseases(diseases, has_symptoms, has_not_symptoms)
 
-    if len(possible_diseases) == 1:
-        d = possible_diseases[0]
-        # Check if all symptoms of the single possible disease are known
-        if all(s in known_symptoms for s in d["symptoms"]):
-             reply = f"It seems very likely you have *{d['disease']}*.\n\n*Advice:* {d['advice']}\n\n*Disclaimer: This is an AI suggestion. Please consult a doctor.*"
-             return {"reply": reply, "done": True}
+    if questions_asked >= MAX_QUESTIONS or not ranked_diseases:
+        return {"reply": get_final_diagnosis(ranked_diseases), "done": True}
 
-    next_symptom = choose_next_symptom(possible_diseases, known_symptoms)
+    next_symptom = choose_next_symptom(ranked_diseases, has_symptoms + has_not_symptoms)
+    
     if next_symptom:
         session["questions_asked"] = questions_asked + 1
         return {
@@ -85,8 +118,7 @@ def get_next_response(session):
             "done": False
         }
 
-    reply = get_best_guess(possible_diseases, known_symptoms)
-    return {"reply": reply, "done": True}
+    return {"reply": get_final_diagnosis(ranked_diseases), "done": True}
 
 # =============================================================================
 # 4. WHATSAPP WEBHOOK SETUP
@@ -120,8 +152,8 @@ def webhook_messages():
 def handle_conversation(sender_id, message):
     if sender_id not in sessions or message in ["hi", "hello", "start", "menu"]:
         sessions[sender_id] = {
-            "symptoms": [],
-            "possible_diseases": list(diseases), # Make a copy
+            "has_symptoms": [],
+            "has_not_symptoms": [],
             "last_question": None,
             "questions_asked": 0
         }
@@ -133,27 +165,16 @@ def handle_conversation(sender_id, message):
     if session.get("last_question"):
         last_symptom = session["last_question"]
         if message in ["yes", "y"]:
-            session["symptoms"].append(last_symptom)
-            # ✅ FIX: Filter disease list based on the new "yes" answer
-            session["possible_diseases"] = [
-                d for d in session["possible_diseases"] if last_symptom in d["symptoms"]
-            ]
+            session["has_symptoms"].append(last_symptom)
         elif message in ["no", "n"]:
-             # ✅ FIX: Filter disease list based on the new "no" answer
-            session["possible_diseases"] = [
-                d for d in session["possible_diseases"] if last_symptom not in d["symptoms"]
-            ]
+            session["has_not_symptoms"].append(last_symptom)
         session["last_question"] = None
     else:
         new_symptoms = extract_symptoms(message, diseases)
         if new_symptoms:
             for s in new_symptoms:
-                if s not in session["symptoms"]:
-                    session["symptoms"].append(s)
-            # ✅ FIX: Filter disease list based on initial symptoms
-            session["possible_diseases"] = [
-                d for d in diseases if all(s in d["symptoms"] for s in session["symptoms"])
-            ]
+                if s not in session["has_symptoms"]:
+                    session["has_symptoms"].append(s)
         else:
             send_whatsapp_message(sender_id, "I couldn't recognize any symptoms. Could you please try rephrasing? For example: 'I have a sore throat'.")
             return
