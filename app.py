@@ -77,7 +77,7 @@ def webhook_messages():
 # ---------------- Send WhatsApp Message ----------------
 import requests
 
-WHATSAPP_TOKEN = "EAAcwuh8kFaABPvPez0BmXYcs00qnZC6CWDniP1N4ldxfoZAoCTmGAZCXVsOZBWs0QotaBKFxOubGHgZCzeYmccpe6ZCI6lu20SUpIqkdve6G5zeSXO1WgXrzvKEYq0nz2jc6s0HXymCsQrftNluYCwJEsDQ0lJ7WCZB24tsXy4yLh7cVDLTfsI6IBhOxRzVt3pLA8kDHQXAPL7oijW6JUFEYiwzcOZBSQUpTVkzMzlIZBYPsvqS8ZD" #business_id
+WHATSAPP_TOKEN = "EAAcwuh8kFaABPpxwHId5cO6y93vxNRRGi2AfRT1wUuFgUy6ZBiYyZAb7sKKPgSiUY9iZCxIZCSmZBeil62vaG9G8hDfFDsS7R3OaUaZAz4HYHDfcqVjKMqurxDHCZAmyD7xeL36kl72odlJnxCRIv33Vv0z1Yxcuzjit72Yk0gEgDTHZBd8BRIRoQZCixuZCOkX2UZAKIOqtZAcoRr9ZByjzwNT9Dryg2DDgnwpczFBsQEhVGXQOywwZDZD" #business_id
 PHONE_NUMBER_ID = "804581786068036"
 
 def send_whatsapp_message(to, text):
@@ -96,6 +96,7 @@ def send_whatsapp_message(to, text):
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
+
 
 
 
