@@ -16,7 +16,7 @@ VERIFY_TOKEN = os.getenv("VERIFY_TOKEN", "12345")
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN", "EAAcwuh8kFaABPnP9gv7d8mNIrmJo58ef7xXoSzPEUvV1IVZCBBoLt5Vb8hDlu7i8VP3ZBUW1ZBJvtGUIVgZBZCX1LwaR4mQcnFRCEZCXeaBBJj8gZA4oUQMZBHbVLE9ZCq2HZA5muNSoLX97Ybh09fiA96isP89H0IWQzbINTe1z3S7LL0uIniUnjHRqI0ZBCCkG1P4NgZDZD")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID", "804581786068036")
 # NEW: Initialize OpenAI Client
-openai.api_key = os.getenv("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")
+openai.api_key = os.getenv("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")
 
 # =============================================================================
 # 2. LOAD DATA & INITIALIZE SESSION TRACKING
@@ -214,3 +214,4 @@ def send_whatsapp_message(to, text): # ... (remains the same)
 # =============================================================================
 if __name__ == "__main__":
     app.run(debug=True)
+
