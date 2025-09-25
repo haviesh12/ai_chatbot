@@ -64,9 +64,6 @@ def get_next_response(session):
     known_symptoms = session["symptoms"]
     possible_diseases = session.get("possible_diseases", diseases)
     questions_asked = session.get("questions_asked", 0)
-
-    # FIX #3: Removed the overly strict filtering line that used all().
-    # The ranking in get_best_guess is more robust.
     
     session["possible_diseases"] = possible_diseases
 
@@ -74,16 +71,15 @@ def get_next_response(session):
         reply = get_best_guess(possible_diseases, known_symptoms)
         return {"reply": reply, "done": True}
 
-    # FIX #2: Modified this check to be less aggressive
     if len(possible_diseases) == 1:
         next_symptom_check = choose_next_symptom(possible_diseases, known_symptoms)
-        # Only give a final diagnosis if no more questions can be asked
         if next_symptom_check is None:
             d = possible_diseases[0]
             reply = f"Based on your symptoms, it looks like *{d['disease']}*.\n\n*Advice:* {d['advice']}\n\n*Disclaimer: This is an AI suggestion. Please consult a doctor.*"
             return {"reply": reply, "done": True}
 
-    next_symptom = choose_next_sympton(possible_diseases, known_symptoms)
+    # ✅ FIX: Corrected the function name here
+    next_symptom = choose_next_symptom(possible_diseases, known_symptoms)
     if next_symptom:
         session["questions_asked"] = questions_asked + 1
         return {
@@ -141,7 +137,6 @@ def handle_conversation(sender_id, message):
         last_symptom = session["last_question"]
         if message in ["yes", "y"]:
             session["symptoms"].append(last_symptom)
-        # FIX #1: The "no" case is now handled correctly by doing nothing.
         elif message in ["no", "n"]:
             pass # We just move on to the next question
         session["last_question"] = None
