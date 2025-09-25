@@ -1,4 +1,7 @@
 flask
 flask-cors
-gunicorn
 requests
+gunicorn
+pandas
+numpy
+scikit-learn
