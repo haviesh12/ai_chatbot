@@ -25,7 +25,7 @@ sessions = {}
 MAX_QUESTIONS = 5
 
 # =============================================================================
-# 3. ADVANCED CHATBOT LOGIC (with fixes)
+# 3. ADVANCED CHATBOT LOGIC (Fully Debugged)
 # =============================================================================
 
 def extract_symptoms(message, diseases_data):
@@ -65,20 +65,17 @@ def get_next_response(session):
     possible_diseases = session.get("possible_diseases", diseases)
     questions_asked = session.get("questions_asked", 0)
     
-    session["possible_diseases"] = possible_diseases
-
     if questions_asked >= MAX_QUESTIONS or not possible_diseases:
         reply = get_best_guess(possible_diseases, known_symptoms)
         return {"reply": reply, "done": True}
 
     if len(possible_diseases) == 1:
-        next_symptom_check = choose_next_symptom(possible_diseases, known_symptoms)
-        if next_symptom_check is None:
-            d = possible_diseases[0]
-            reply = f"Based on your symptoms, it looks like *{d['disease']}*.\n\n*Advice:* {d['advice']}\n\n*Disclaimer: This is an AI suggestion. Please consult a doctor.*"
-            return {"reply": reply, "done": True}
+        d = possible_diseases[0]
+        # Check if all symptoms of the single possible disease are known
+        if all(s in known_symptoms for s in d["symptoms"]):
+             reply = f"It seems very likely you have *{d['disease']}*.\n\n*Advice:* {d['advice']}\n\n*Disclaimer: This is an AI suggestion. Please consult a doctor.*"
+             return {"reply": reply, "done": True}
 
-    # ✅ FIX: Corrected the function name here
     next_symptom = choose_next_symptom(possible_diseases, known_symptoms)
     if next_symptom:
         session["questions_asked"] = questions_asked + 1
@@ -124,7 +121,7 @@ def handle_conversation(sender_id, message):
     if sender_id not in sessions or message in ["hi", "hello", "start", "menu"]:
         sessions[sender_id] = {
             "symptoms": [],
-            "possible_diseases": diseases,
+            "possible_diseases": list(diseases), # Make a copy
             "last_question": None,
             "questions_asked": 0
         }
@@ -137,8 +134,15 @@ def handle_conversation(sender_id, message):
         last_symptom = session["last_question"]
         if message in ["yes", "y"]:
             session["symptoms"].append(last_symptom)
+            # ✅ FIX: Filter disease list based on the new "yes" answer
+            session["possible_diseases"] = [
+                d for d in session["possible_diseases"] if last_symptom in d["symptoms"]
+            ]
         elif message in ["no", "n"]:
-            pass # We just move on to the next question
+             # ✅ FIX: Filter disease list based on the new "no" answer
+            session["possible_diseases"] = [
+                d for d in session["possible_diseases"] if last_symptom not in d["symptoms"]
+            ]
         session["last_question"] = None
     else:
         new_symptoms = extract_symptoms(message, diseases)
@@ -146,6 +150,10 @@ def handle_conversation(sender_id, message):
             for s in new_symptoms:
                 if s not in session["symptoms"]:
                     session["symptoms"].append(s)
+            # ✅ FIX: Filter disease list based on initial symptoms
+            session["possible_diseases"] = [
+                d for d in diseases if all(s in d["symptoms"] for s in session["symptoms"])
+            ]
         else:
             send_whatsapp_message(sender_id, "I couldn't recognize any symptoms. Could you please try rephrasing? For example: 'I have a sore throat'.")
             return
@@ -175,3 +183,4 @@ def send_whatsapp_message(to, text):
 # =============================================================================
 if __name__ == "__main__":
     app.run(debug=True)
+
