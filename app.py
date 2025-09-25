@@ -12,7 +12,7 @@ CORS(app)
 
 # Load your tokens from environment variables for security and best practice
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN", "12345")
-WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN", "EAAcwuh8kFaABPn4Tgf9ubTqzbKcHEmKJu2MnfKNMWpmGnsU15RYhvclT4KEJoGd6r4VyWXEiFiMNngG7eWqlHpwqbE7jP0kpSzazo81McmzgpZADZBhmhlKZAa9TkOQH2OVfJuLW25biovsYxYpSZBZCcX1jgtnZBf5PkeIN6rpERNc62c0KqMc50GDZC5i3c4KBkWgRZBM6gj3fMmyZAoK2xT4dZBBNzs3OSmCfXPDZCUhnUO00AZDZD")
+WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN", "EAAcwuh8kFaABPnP9gv7d8mNIrmJo58ef7xXoSzPEUvV1IVZCBBoLt5Vb8hDlu7i8VP3ZBUW1ZBJvtGUIVgZBZCX1LwaR4mQcnFRCEZCXeaBBJj8gZA4oUQMZBHbVLE9ZCq2HZA5muNSoLX97Ybh09fiA96isP89H0IWQzbINTe1z3S7LL0uIniUnjHRqI0ZBCCkG1P4NgZDZD")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID", "804581786068036")
 
 # =============================================================================
@@ -198,4 +198,5 @@ def send_whatsapp_message(to, text):
 # =============================================================================
 if __name__ == "__main__":
     app.run(debug=True)
+
 
