@@ -6,7 +6,7 @@ import os
 app = Flask(__name__)
 CORS(app)  # allow requests from frontend
 
-VERIFY_TOKEN = "abc@123"  # set this, use same in Meta Dev console
+VERIFY_TOKEN = "12345"  # set this, use same in Meta Dev console
 
 # Load dataset (expects diseases.json in same folder)
 DATA_FILE = os.path.join(os.path.dirname(__file__), "diseases.json")
@@ -96,5 +96,6 @@ def send_whatsapp_message(to, text):
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
+
 
 
